@@ -11,6 +11,7 @@ class PbsJob(object):
         self._name = None
         self._user = None
         self._state = None
+        self._remaining = None
         self._resource_specs = {}
         self._resources_used = {}
         self._exec_hosts = None
@@ -30,6 +31,7 @@ class PbsJob(object):
         }
         self._shebang = None
         self._script = []
+        self._qtime
 
     @property
     def job_id(self):
@@ -67,6 +69,16 @@ class PbsJob(object):
         self._state = state
 
     @property
+    def remaining(self):
+        '''Returs the job's remaining walltime'''
+        return self._remaining
+
+    @remaining.setter
+    def remaining(self, remaining):
+        '''Sets the job's remaining walltime'''
+        self._remaining = remaining
+
+    @property
     def exec_host(self):
         '''Returns a map with exec hosts for a running job'''
         return self._exec_hosts
@@ -95,6 +107,16 @@ class PbsJob(object):
     def queue(self, name):
         '''Set the job's queue name'''
         self._queue = name
+
+    @property
+    def qtime(self):
+        '''returns the job's qtime name, None if not set'''
+        return self._qtime
+
+    @qtime.setter
+    def qtime(self, qtime):
+        '''Set the job's qtime'''
+        self._qtime = qtime
 
     @property
     def resource_specs(self):

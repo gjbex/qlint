@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''Utilities to deal with PBS torque qstat'''
 
+import datetime
 from vsc.utils import walltime2seconds
 from vsc.pbs.job import PbsJob
 
@@ -18,6 +19,7 @@ class QstatParser(object):
 
     def parse_record(self, record):
         '''parse an individual job record'''
+        dt_fmt = '%a %b %d %H:%M:%S %Y'
         job = None
         resource_specs = {}
         resources_used = {}
@@ -64,6 +66,11 @@ class QstatParser(object):
             elif line.startswith('exec_host ='):
                 state = 'exec_host'
                 host_str = self._get_value(line)
+            elif line.startswith('Walltime.Remaining ='):
+                job.remaining = int(self._get_value(line))
+            elif line.startswith('qtime ='):
+                qtime_str = self._get_value(line)
+                job.qtime = datetime.datetime.strptime(qtime_str, dt_fmt)
         job.add_resource_specs(resource_specs)
         job.add_resources_used(resources_used)
         return job
