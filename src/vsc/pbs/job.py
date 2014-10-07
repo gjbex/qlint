@@ -31,7 +31,7 @@ class PbsJob(object):
         }
         self._shebang = None
         self._script = []
-        self._qtime
+        self._qtime = None
 
     @property
     def job_id(self):
