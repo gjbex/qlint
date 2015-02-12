@@ -33,3 +33,9 @@ Warnings:
   * Unknown resource specication (-l)
   * Memory specification for pmem and mem not consistent
 
+Dependencies
+------------
+* https://github.com/gjbex/vsc-tools-lib : the `lib` directory should
+    be in the `PYTHONPATH`
+* https://github.com/gjbex/vsc-cluster-db/ : required to create a library
+    storing information about the compute cluster
