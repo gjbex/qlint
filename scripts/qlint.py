@@ -17,14 +17,16 @@ if __name__ == '__main__':
 
     arg_parser = ArgumentParser(description='PBS script syntax checker')
     arg_parser.add_argument('pbs_file', help='PBS file to check')
-    arg_parser.add_argument('--show_job', action='store_true',
-                            help='show job parameters')
     arg_parser.add_argument('--conf', default='config.json',
                             help='configuration file')
+    arg_parser.add_argument('--db', help='cluster database file')
+    arg_parser.add_argument('--events', help='events file')
     arg_parser.add_argument('--quiet', action='store_true',
                             help='do not show summary')
     arg_parser.add_argument('--warnings_as_errors', action='store_true',
                             help='non zero exit code on warnings')
+    arg_parser.add_argument('--show_job', action='store_true',
+                            help='show job parameters')
     options, rest = arg_parser.parse_known_args()
     try:
         with open(options.conf, 'r') as conf_file:
@@ -33,8 +35,12 @@ if __name__ == '__main__':
         msg = "### error: can not open configuration file '{0}'\n"
         sys.stderr.write(msg.format(options.conf))
         sys.exit(CAN_NOT_OPEN_CONF_FILE)
+    if options.db:
+        conf['cluster_db'] = options.db
+    if options.events:
+        conf['event_file'] = options.events
     if not os.path.isfile(conf['cluster_db']):
-        msg = "### error: can not open cluser DB '{0}'\n"
+        msg = "### error: can not open cluster DB '{0}'\n"
         sys.stderr.write(msg.format(conf['cluster_db']))
         sys.exit(CAN_NOT_OPEN_CLUSTER_DB_FILE)
     try:
