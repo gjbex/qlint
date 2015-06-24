@@ -22,6 +22,8 @@ case "${VSC_INSTITUTE_CLUSTER}" in
         module purge
         module load thinking/2014a
         module load Python/2.7.6-foss-2014a
+        SITE_PACKAGE_DIR="/apps/leuven/common/lib/python2.7/site-packages"
+        PYTHONPATH="${SITE_PACKAGE_DIR}:${PYTHONPATH}"
         ;;
 esac
 
