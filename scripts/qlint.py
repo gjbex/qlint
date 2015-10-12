@@ -11,6 +11,7 @@ CAN_NOT_OPEN_CONF_FILE = 12
 CAN_NOT_OPEN_CLUSTER_DB_FILE = 13
 CAN_NOT_OPEN_PBS = 14
 UNDEFINED_EVENT = 15
+UNEXPECTED_ERROR = 64
 
 def format_msg(msg_tmpl, extra, indent=8, width=64):
     indent = ' '*indent
@@ -63,18 +64,30 @@ if __name__ == '__main__':
         sys.stderr.write(msg.format(conf['event_file']))
         sys.exit(CAN_NOT_OPEN_EVENT_FILE)
     indent = ' '*conf['report_indent']
-    pbs_parser = PbsScriptParser(conf, event_defs)
     try:
-        with open(options.pbs_file, 'r') as pbs_file:
-            pbs_parser.parse_file(pbs_file)
-    except EnvironmentError as error:
-        msg = "### error: can not open PBS file '{0}'\n"
-        sys.stderr.write(msg.format(options.events))
-        sys.exit(CAN_NOT_OPEN_PBS)
-    job_checker = JobChecker(conf, event_defs)
-    job_checker.check(pbs_parser.job)
-    pbs_parser.context = 'semantics'
-    pbs_parser.merge_events(job_checker.events)
+        pbs_parser = PbsScriptParser(conf, event_defs)
+        try:
+            with open(options.pbs_file, 'r') as pbs_file:
+                pbs_parser.parse_file(pbs_file)
+        except EnvironmentError as error:
+            msg = "### error: can not open PBS file '{0}'\n"
+            sys.stderr.write(msg.format(options.events))
+            sys.exit(CAN_NOT_OPEN_PBS)
+        job_checker = JobChecker(conf, event_defs)
+        job_checker.check(pbs_parser.job)
+        pbs_parser.context = 'semantics'
+        pbs_parser.merge_events(job_checker.events)
+    except Exception as exception:
+        msg = ('### error: qlint crashed unexpectedly with exception\n'
+               '#          "{0}"\n'
+               '#   If you want to help resolving this issue, please\n'
+               '#   report it to: geertjan.bex@uhasselt.be\n'
+               '#   Please include:\n'
+               '#     * the PBS you were checking, and\n'
+               '#     * the command line options qlint was invoked with.\n'
+               '#   Apologies and thanks for your cooperation.\n')
+        sys.stderr.write(msg.format(exception))
+        sys.exit(UNEXPECTED_ERROR)
     nr_warnings = 0
     nr_errors = 0
     for event in pbs_parser.events:
