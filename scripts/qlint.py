@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from textwrap import wrap
+
+
 NO_ERRORS_EXIT = 0
 ERRORS_EXIT = 1
 WARNINGS_EXIT = 2
@@ -9,9 +12,18 @@ CAN_NOT_OPEN_CLUSTER_DB_FILE = 13
 CAN_NOT_OPEN_PBS = 14
 UNDEFINED_EVENT = 15
 
+def format_msg(msg_tmpl, extra, indent=8, width=64):
+    indent = ' '*indent
+    msg = '\n'.join([indent + x for x in
+                     wrap(msg_tmpl.format(**extra), width=width)])
+    return msg
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
-    import json, os, sqlite3, sys
+    import json
+    import os
+    import sqlite3
+    import sys
     from vsc.pbs.script_parser import PbsScriptParser
     from vsc.pbs.check import JobChecker
 
@@ -50,6 +62,7 @@ if __name__ == '__main__':
         msg = "### error: can not open event file '{0}'\n"
         sys.stderr.write(msg.format(conf['event_file']))
         sys.exit(CAN_NOT_OPEN_EVENT_FILE)
+    indent = ' '*conf['report_indent']
     pbs_parser = PbsScriptParser(conf, event_defs)
     try:
         with open(options.pbs_file, 'r') as pbs_file:
@@ -60,6 +73,7 @@ if __name__ == '__main__':
         sys.exit(CAN_NOT_OPEN_PBS)
     job_checker = JobChecker(conf, event_defs)
     job_checker.check(pbs_parser.job)
+    pbs_parser.context = 'semantics'
     pbs_parser.merge_events(job_checker.events)
     nr_warnings = 0
     nr_errors = 0
@@ -67,20 +81,33 @@ if __name__ == '__main__':
         eid = event['id']
         if eid in event_defs:
             msg_tmpl = event_defs[eid]['message']
-            msg = msg_tmpl.format(**event['extra'])
+            msg = format_msg(msg_tmpl, event['extra'],
+                             indent=2*conf['report_indent'],
+                             width=conf['report_width'])
             rem_tmpl = event_defs[eid]['remedy']
-            rem = rem_tmpl.format(**event['extra'])
+            rem = format_msg(rem_tmpl, event['extra'],
+                             indent=2*conf['report_indent'],
+                             width=conf['report_width'])
             if event_defs[eid]['category'] == 'error':
                 cat = 'E'
                 nr_errors += 1
             elif event_defs[eid]['category'] == 'warning':
                 cat = 'W'
                 nr_warnings += 1
-            output_fmt = ('{cat} line {line:d}:\n'
-                          '    problem: {msg}\n'
-                          '    remedy:  {rem}')
+            if 'line' in event and event['line']:
+                output_fmt = ('{cat} syntax on line {line:d}:\n'
+                              '{indent}problem:\n'
+                              '{msg}\n'
+                              '{indent}remedy:\n'
+                              '{rem}')
+            else:
+                output_fmt = ('{cat} semantics:\n'
+                              '{indent}problem:\n'
+                              '{msg}\n'
+                              '{indent}remedy:\n'
+                              '{rem}')
             print output_fmt.format(cat=cat, line=event['line'],
-                                    msg=msg, rem=rem)
+                                    msg=msg, rem=rem, indent=indent)
         else:
             msg = "### internal error: unknown event id '{0}'\n"
             sys.stderr.write(msg.format(id))
