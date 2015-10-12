@@ -60,6 +60,7 @@ if __name__ == '__main__':
         sys.exit(CAN_NOT_OPEN_PBS)
     job_checker = JobChecker(conf, event_defs)
     job_checker.check(pbs_parser.job)
+    pbs_parser.context = 'semantics'
     pbs_parser.merge_events(job_checker.events)
     nr_warnings = 0
     nr_errors = 0
@@ -76,9 +77,14 @@ if __name__ == '__main__':
             elif event_defs[eid]['category'] == 'warning':
                 cat = 'W'
                 nr_warnings += 1
-            output_fmt = ('{cat} line {line:d}:\n'
-                          '    problem: {msg}\n'
-                          '    remedy:  {rem}')
+            if 'line' in event and event['line']:
+                output_fmt = ('{cat} syntax on line {line:d}:\n'
+                              '    problem: {msg}\n'
+                              '    remedy:  {rem}')
+            else:
+                output_fmt = ('{cat} semantics:\n'
+                              '    problem: {msg}\n'
+                              '    remedy:  {rem}')
             print output_fmt.format(cat=cat, line=event['line'],
                                     msg=msg, rem=rem)
         else:
