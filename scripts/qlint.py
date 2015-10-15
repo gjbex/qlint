@@ -25,8 +25,9 @@ if __name__ == '__main__':
     import os
     import sqlite3
     import sys
+    import traceback
     from vsc.pbs.script_parser import PbsScriptParser
-    from vsc.pbs.check import JobChecker
+    from vsc.pbs.check import JobChecker, ScriptChecker
 
     arg_parser = ArgumentParser(description='PBS script syntax checker')
     arg_parser.add_argument('pbs_file', help='PBS file to check')
@@ -40,6 +41,9 @@ if __name__ == '__main__':
                             help='non zero exit code on warnings')
     arg_parser.add_argument('--show_job', action='store_true',
                             help='show job parameters')
+    arg_parser.add_argument('--debug', action='store_true',
+                            help='show debugging information for qlint '
+                                 'internal errors')
     options, rest = arg_parser.parse_known_args()
     try:
         with open(options.conf, 'r') as conf_file:
@@ -77,6 +81,11 @@ if __name__ == '__main__':
         job_checker.check(pbs_parser.job)
         pbs_parser.context = 'semantics'
         pbs_parser.merge_events(job_checker.events)
+        script_checker = ScriptChecker(conf, event_defs)
+        script_checker.check(pbs_parser.job,
+                             pbs_parser.script_first_line_nr)
+        pbs_parser.context = 'file'
+        pbs_parser.merge_events(script_checker.events)
     except Exception as exception:
         msg = ('### error: qlint crashed unexpectedly with exception\n'
                '#          "{0}"\n'
@@ -87,6 +96,8 @@ if __name__ == '__main__':
                '#     * the command line options qlint was invoked with.\n'
                '#   Apologies and thanks for your cooperation.\n')
         sys.stderr.write(msg.format(exception))
+        if (options.debug):
+            traceback.print_exc(file=sys.stderr)
         sys.exit(UNEXPECTED_ERROR)
     nr_warnings = 0
     nr_errors = 0
