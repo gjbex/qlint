@@ -13,6 +13,7 @@ CAN_NOT_OPEN_PBS = 14
 UNDEFINED_EVENT = 15
 UNEXPECTED_ERROR = 64
 
+
 def format_msg(msg_tmpl, extra, indent=8, width=64):
     indent = ' '*indent
     msg = '\n'.join([indent + x for x in
@@ -23,7 +24,6 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     import json
     import os
-    import sqlite3
     import sys
     import traceback
     from vsc.pbs.script_parser import PbsScriptParser
@@ -86,6 +86,54 @@ if __name__ == '__main__':
                              pbs_parser.script_first_line_nr)
         pbs_parser.context = 'file'
         pbs_parser.merge_events(script_checker.events)
+        nr_warnings = 0
+        nr_errors = 0
+        for event in pbs_parser.events:
+            eid = event['id']
+            if eid in event_defs:
+                msg_tmpl = event_defs[eid]['message']
+                msg = format_msg(msg_tmpl, event['extra'],
+                                 indent=2*conf['report_indent'],
+                                 width=conf['report_width'])
+                rem_tmpl = event_defs[eid]['remedy']
+                rem = format_msg(rem_tmpl, event['extra'],
+                                 indent=2*conf['report_indent'],
+                                 width=conf['report_width'])
+                if event_defs[eid]['category'] == 'error':
+                    cat = 'E'
+                    nr_errors += 1
+                elif event_defs[eid]['category'] == 'warning':
+                    cat = 'W'
+                    nr_warnings += 1
+                if 'line' in event and event['line']:
+                    output_fmt = ('{cat} on line {line:d}:\n'
+                                  '{indent}problem:\n'
+                                  '{msg}\n'
+                                  '{indent}remedy:\n'
+                                  '{rem}')
+                else:
+                    output_fmt = ('{cat}:\n'
+                                  '{indent}problem:\n'
+                                  '{msg}\n'
+                                  '{indent}remedy:\n'
+                                  '{rem}')
+                print output_fmt.format(cat=cat, line=event['line'],
+                                        msg=msg, rem=rem, indent=indent)
+            else:
+                msg = "### internal error: unknown event id '{0}'\n"
+                sys.stderr.write(msg.format(id))
+                sys.exit(UNDEFINED_EVENT)
+        if not options.quiet:
+            print '{err:d} errors, {warn:d} warnings'.format(warn=nr_warnings,
+                                                             err=nr_errors)
+        if options.show_job:
+            print pbs_parser.job.attrs_to_str()
+        if nr_errors > 0:
+            sys.exit(ERRORS_EXIT)
+        elif options.warnings_as_errors and nr_warnings > 0:
+            sys.exit(WARNINGS_EXIT)
+        else:
+            sys.exit(NO_ERRORS_EXIT)
     except Exception as exception:
         msg = ('### error: qlint crashed unexpectedly with exception\n'
                '#          "{0}"\n'
@@ -99,52 +147,3 @@ if __name__ == '__main__':
         if (options.debug):
             traceback.print_exc(file=sys.stderr)
         sys.exit(UNEXPECTED_ERROR)
-    nr_warnings = 0
-    nr_errors = 0
-    for event in pbs_parser.events:
-        eid = event['id']
-        if eid in event_defs:
-            msg_tmpl = event_defs[eid]['message']
-            msg = format_msg(msg_tmpl, event['extra'],
-                             indent=2*conf['report_indent'],
-                             width=conf['report_width'])
-            rem_tmpl = event_defs[eid]['remedy']
-            rem = format_msg(rem_tmpl, event['extra'],
-                             indent=2*conf['report_indent'],
-                             width=conf['report_width'])
-            if event_defs[eid]['category'] == 'error':
-                cat = 'E'
-                nr_errors += 1
-            elif event_defs[eid]['category'] == 'warning':
-                cat = 'W'
-                nr_warnings += 1
-            if 'line' in event and event['line']:
-                output_fmt = ('{cat} syntax on line {line:d}:\n'
-                              '{indent}problem:\n'
-                              '{msg}\n'
-                              '{indent}remedy:\n'
-                              '{rem}')
-            else:
-                output_fmt = ('{cat} semantics:\n'
-                              '{indent}problem:\n'
-                              '{msg}\n'
-                              '{indent}remedy:\n'
-                              '{rem}')
-            print output_fmt.format(cat=cat, line=event['line'],
-                                    msg=msg, rem=rem, indent=indent)
-        else:
-            msg = "### internal error: unknown event id '{0}'\n"
-            sys.stderr.write(msg.format(id))
-            sys.exit(UNDEFINED_EVENT)
-    if not options.quiet:
-        print '{err:d} errors, {warn:d} warnings'.format(warn=nr_warnings,
-                                                         err=nr_errors)
-    if options.show_job:
-        print pbs_parser.job.attrs_to_str()
-    if nr_errors > 0:
-        sys.exit(ERRORS_EXIT)
-    elif options.warnings_as_errors and nr_warnings > 0:
-        sys.exit(WARNINGS_EXIT)
-    else:
-        sys.exit(NO_ERRORS_EXIT)
-
