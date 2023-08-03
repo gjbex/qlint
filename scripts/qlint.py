@@ -16,9 +16,9 @@ UNEXPECTED_ERROR = 64
 
 def format_msg(msg_tmpl, extra, indent=8, width=64):
     indent = ' '*indent
-    msg = '\n'.join([indent + x for x in
-                     wrap(msg_tmpl.format(**extra), width=width)])
-    return msg
+    return '\n'.join(
+        [indent + x for x in wrap(msg_tmpl.format(**extra), width=width)]
+    )
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
